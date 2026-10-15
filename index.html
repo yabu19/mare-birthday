@@ -231,6 +231,41 @@ h2{font-family:var(--display);font-style:italic;font-weight:400;font-size:clamp(
 .yes-reply .big{font-family:var(--script);font-size:clamp(54px,15vw,80px);color:var(--rose);line-height:1;text-shadow:0 0 30px rgba(255,111,145,.5)}
 .yes-reply p{margin:0;font-family:var(--display);font-style:italic;font-size:20px;color:var(--paper);max-width:30ch}
 
+/* Position picker */
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:440px;margin-top:10px}
+.choice{
+  appearance:none;cursor:pointer;text-align:left;border-radius:14px;padding:14px 16px;
+  background:rgba(255,209,220,.06);border:1.5px solid rgba(214,169,192,.35);color:var(--blush);
+  display:flex;flex-direction:column;gap:4px;min-width:0;transition:background .2s,border-color .2s,transform .2s;
+}
+.choice:hover{background:rgba(255,111,145,.14);border-color:var(--rose);transform:translateY(-2px)}
+.choice:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.choice b{font-family:var(--display);font-weight:600;font-size:18px;color:var(--paper)}
+.choice span{font-size:13px;color:var(--muted);line-height:1.4}
+
+/* Voucher */
+.voucher{
+  position:relative;width:100%;max-width:400px;margin-top:10px;
+  background:var(--paper);color:var(--ink);border-radius:14px;padding:26px 24px 22px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
+  box-shadow:0 26px 50px -20px rgba(0,0,0,.7);
+  border:2px dashed var(--rose-deep);outline:8px solid var(--paper);
+  animation:dealIn .5s cubic-bezier(.2,.8,.3,1);
+}
+.voucher::before,.voucher::after{content:"";position:absolute;top:50%;width:26px;height:26px;margin-top:-13px;border-radius:50%;background:var(--night)}
+.voucher::before{left:-23px}
+.voucher::after{right:-23px}
+.v-label{font-size:11px;letter-spacing:.26em;text-transform:uppercase;font-weight:700;color:var(--rose-deep)}
+.v-for{font-family:var(--display);font-style:italic;font-size:16px;color:var(--ink-soft);margin-top:6px}
+.v-name{font-family:var(--script);font-size:clamp(42px,12vw,56px);color:var(--rose-deep);line-height:1.1}
+.v-line{font-size:14px;color:var(--ink-soft)}
+.v-rule{width:100%;border-top:1px dashed rgba(58,16,41,.25);margin:12px 0 8px}
+.v-meta{margin:0;width:100%;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.v-meta div{display:flex;justify-content:space-between;gap:12px;text-align:right}
+.v-meta dt{color:var(--ink-soft);text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:700;text-align:left}
+.v-meta dd{margin:0;color:var(--ink);font-weight:500}
+.v-sign{font-family:var(--script);font-size:30px;color:var(--ink);margin-top:8px}
+
 /* Buttons */
 .btn{
   appearance:none;border:1.5px solid var(--muted);background:transparent;color:var(--blush);
@@ -375,8 +410,23 @@ footer small{color:var(--muted);font-size:13px}
       <button class="answer" id="no">No</button>
     </div>
     <div class="yes-reply" id="yesReply" hidden>
-      <span class="big">I knew it</span>
+      <span class="big" id="yesTitle"></span>
       <p id="yesText"></p>
+      <div class="choices" id="choices"></div>
+      <div class="voucher" id="voucher" hidden>
+        <span class="v-label">Birthday voucher</span>
+        <span class="v-for">Good for one night of</span>
+        <span class="v-name" id="vName"></span>
+        <span class="v-line" id="vLine"></span>
+        <div class="v-rule"></div>
+        <dl class="v-meta">
+          <div><dt>For</dt><dd data-name>Mare</dd></div>
+          <div><dt>Valid</dt><dd id="vValid"></dd></div>
+          <div><dt>Expires</dt><dd>Never</dd></div>
+        </dl>
+        <span class="v-sign" id="vSign"></span>
+      </div>
+      <button class="btn" id="repick" hidden>Change my mind</button>
     </div>
   </section>
 
@@ -420,8 +470,24 @@ var CONFIG = {
     "I hope this year gives you everything you have been wishing for, and I promise to be right beside you for all of it.\n\n" +
     "I love you more than this little page could ever say.",
   signoff: "Forever yours, Yeab",
-  question: "Will you let me spoil you all day today?",
-  yesText: "Good, because I already planned it. I love you, Mare.",
+  question: "Can we fuck tonight?",
+
+  /* No: can never be clicked. It runs, shrinks, then turns into a second Yes */
+  noLines: ["No", "Wait, what?", "Think again", "Are you sure sure?", "Not an option", "Nice try", "Last chance"],
+  noBecomes: "Okay, yes",
+
+  /* Yes: she picks a position and gets a voucher */
+  yesTitle: "Good answer",
+  yesText: "There is an ocean between us tonight, so this is a voucher. Pick how you want it, and I will redeem it the second I see you.",
+  positions: [
+    { name: "Missionary",  line: "Classic. Eyes on you the whole time." },
+    { name: "Cowgirl",     line: "You are in charge, birthday girl." },
+    { name: "Spooning",    line: "Slow, close, and lazy." },
+    { name: "Doggy",       line: "No comment. Just a smirk." },
+    { name: "Against the wall", line: "Because we will not make it to the bed." },
+    { name: "Surprise me", line: "Trust me. I have ideas." }
+  ],
+  voucherValid: "The moment we are in the same country",
   wishDone: "Whatever you wished for, I will help make it come true."
 };
 
@@ -446,6 +512,7 @@ var CONFIG = {
   $('photoBack').textContent = CONFIG.photoBack;
   $('signoff').textContent = CONFIG.signoff;
   $('question').textContent = CONFIG.question;
+  $('yesTitle').textContent = CONFIG.yesTitle;
   $('yesText').textContent = CONFIG.yesText;
   $('fromName').textContent = 'Love, ' + CONFIG.from;
 
@@ -642,30 +709,71 @@ var CONFIG = {
   });
   skip.addEventListener('click', finishLetter);
 
-  /* ---------- Question: Yes / runaway No ---------- */
+  /* ---------- Question: Yes / playful No ---------- */
   var yes = $('yes'), no = $('no'), pg = $('playground'), noCount = 0, yesScale = 1;
-  var noLines = ['No','Are you sure?','Think again','Wrong button','Nice try','Pretty please?','You cannot catch me','Just press Yes'];
+  var lines = CONFIG.noLines, converted = false, noScale = 1;
+  no.textContent = lines[0];
   function dodge(){
+    if (converted) return;
     noCount++;
-    no.textContent = noLines[noCount % noLines.length];
-    var box = pg.getBoundingClientRect(), b = no.getBoundingClientRect();
-    var maxX = Math.max(0, box.width - b.width - 6), maxY = Math.max(0, box.height - b.height - 6);
-    var y = yes.getBoundingClientRect(), nx, ny, tries = 0;
+    if (noCount >= lines.length){
+      /* Out of excuses: No turns into another Yes */
+      converted = true;
+      no.textContent = CONFIG.noBecomes;
+      no.style.background = 'var(--rose)';
+      no.style.color = 'var(--night)';
+      no.style.borderColor = 'var(--rose)';
+      no.style.transform = 'none';
+      var c = centerOf(no); burst(c.x, c.y, 20, 4);
+      return;
+    }
+    no.textContent = lines[noCount];
+    noScale = Math.max(noScale - 0.07, 0.6);
+    var box = pg.getBoundingClientRect(), b = no.getBoundingClientRect(), y = yes.getBoundingClientRect();
+    var maxX = Math.max(0, box.width - b.width - 6), maxY = Math.max(0, box.height - b.height - 6), nx, ny, tries = 0, overlap;
     do {
       nx = Math.random() * maxX; ny = Math.random() * maxY; tries++;
-      var overlap = nx + box.left < y.right + 10 && nx + box.left + b.width > y.left - 10 &&
-                    ny + box.top < y.bottom + 10 && ny + box.top + b.height > y.top - 10;
-    } while (overlap && tries < 20);
-    no.style.left = nx + 'px';
-    no.style.top = ny + 'px';
-    no.style.transform = 'none';
-    yesScale = Math.min(yesScale + 0.12, 1.6);
+      overlap = nx + box.left < y.right + 12 && nx + box.left + b.width > y.left - 12 &&
+                ny + box.top < y.bottom + 12 && ny + box.top + b.height > y.top - 12;
+    } while (overlap && tries < 25);
+    no.style.left = nx + 'px'; no.style.top = ny + 'px'; no.style.transform = 'scale(' + noScale + ')';
+    yesScale = Math.min(yesScale + 0.1, 1.5);
     yes.style.transform = 'translateY(-50%) scale(' + yesScale + ')';
   }
+  /* Runs on hover (computer) and on touch before the tap lands (phone) */
   no.addEventListener('mouseenter', dodge);
-  no.addEventListener('pointerdown', function(e){ e.preventDefault(); dodge(); });
-  no.addEventListener('click', function(e){ e.preventDefault(); dodge(); });
-  no.addEventListener('focus', function(){ if (noCount > 0) dodge(); });
+  no.addEventListener('pointerdown', function(e){ if (!converted){ e.preventDefault(); dodge(); } });
+  no.addEventListener('click', function(e){
+    e.preventDefault();
+    if (converted) yes.click(); else dodge();
+  });
+
+  /* Position picker + voucher */
+  var choices = $('choices'), voucher = $('voucher'), repick = $('repick');
+  $('vValid').textContent = CONFIG.voucherValid;
+  $('vSign').textContent = CONFIG.from;
+  CONFIG.positions.forEach(function(p){
+    var b = document.createElement('button');
+    b.className = 'choice';
+    var n = document.createElement('b'); n.textContent = p.name;
+    var l = document.createElement('span'); l.textContent = p.line;
+    b.appendChild(n); b.appendChild(l);
+    b.addEventListener('click', function(){
+      $('vName').textContent = p.name;
+      $('vLine').textContent = p.line;
+      choices.hidden = true;
+      voucher.hidden = false;
+      repick.hidden = false;
+      var c = centerOf(voucher);
+      burst(c.x, c.y, 80, 10);
+      setTimeout(rain, 400);
+    });
+    choices.appendChild(b);
+  });
+  repick.addEventListener('click', function(){
+    voucher.hidden = true; repick.hidden = true; choices.hidden = false;
+  });
+
   yes.addEventListener('click', function(){
     var c = centerOf(yes);
     pg.hidden = true;
